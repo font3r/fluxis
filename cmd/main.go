@@ -33,8 +33,6 @@ func main() {
 			if !errors.Is(err, io.EOF) {
 				fmt.Printf("ERROR: error reading from connection - %s\n", err)
 			}
-
-			fmt.Println("DEBUG: end of input")
 			break
 		}
 

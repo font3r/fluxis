@@ -13,29 +13,10 @@ const buffer_limit int = 1024
 
 func main() {
 	fmt.Println("INFO: starting fluxis server")
-
 	st := NewStorage()
 
-	start(func(message string) string {
-		if strings.HasPrefix(message, "SET") {
-			cmd := strings.Split(message[3:], "=")
-			err := st.SetKey(cmd[0], cmd[1])
-			if err != nil {
-				return "ERR"
-			}
-
-			return "OK"
-		}
-
-		if strings.HasPrefix(message, "GET") {
-			return st.GetKey(message[3:])
-		}
-
-		if strings.HasPrefix(message, "DEBUG") {
-			return st.Debug()
-		}
-
-		return "INVALID COMMAND"
+	start(func(s string) string {
+		return handleCommand(&st, s)
 	})
 }
 
@@ -56,39 +37,76 @@ func start(process func(s string) string) {
 		}
 
 		fmt.Printf("DEBUG: accepted connection from %s\n", conn.RemoteAddr())
+		go processRequest(conn, process)
+	}
+}
 
-		req := strings.Builder{}
-		buffer := make([]byte, buffer_limit)
-
-		for {
-			n, err := conn.Read(buffer)
-			if err != nil {
-				if !errors.Is(err, io.EOF) {
-					fmt.Printf("ERROR: error reading from connection - %s\n", err)
-				}
-
-				fmt.Println("DEBUG: end of input")
-				break
-			}
-
-			req.Write(buffer[:n])
-
-			if n < buffer_limit {
-				break
-			}
+func processRequest(conn net.Conn, cmdHandler func(s string) string) {
+	defer func() {
+		if r := recover(); r != nil {
+			fmt.Println("WARNING: recovered in processRequest() because of:", r)
 		}
 
-		reqS := req.String()
+		fmt.Printf("DEBUG: closing connection %s\n", conn.RemoteAddr())
 
-		fmt.Printf("INFO: received \"%s\"\n", reqS)
-		res := process(reqS)
-
-		_, err = conn.Write([]byte(res))
+		internalErr := FluxisError{Code: "INTERNAL_ERROR", Message: "Internal error"}
+		_, err := conn.Write([]byte(internalErr.Error()))
 		if err != nil {
 			fmt.Printf("ERROR: errror during writing data to connection - %s\n", err)
 		}
 
-		fmt.Printf("DEBUG: closing connection %s\n", conn.RemoteAddr())
 		conn.Close()
+	}()
+
+	reqBuilder := strings.Builder{}
+	buffer := make([]byte, buffer_limit)
+
+	for {
+		n, err := conn.Read(buffer)
+		if err != nil {
+			if !errors.Is(err, io.EOF) {
+				fmt.Printf("ERROR: error reading from connection - %s\n", err)
+			}
+
+			fmt.Println("DEBUG: end of input")
+			break
+		}
+
+		reqBuilder.Write(buffer[:n])
+
+		if n < buffer_limit {
+			break
+		}
 	}
+
+	res := cmdHandler(reqBuilder.String())
+
+	_, err := conn.Write([]byte(res))
+	if err != nil {
+		fmt.Printf("ERROR: errror during writing data to connection - %s\n", err)
+	}
+}
+
+func handleCommand(st *Storage, message string) string {
+	fmt.Printf("INFO: raw message %s\n", message)
+	cmd, err := Parse(message)
+
+	if err != nil {
+		fmt.Printf("ERROR: error during parsing command %s", err.Error())
+		return err.Error()
+	}
+
+	fmt.Printf("INFO: parsed command %s\n", cmd)
+	switch cmd.Command {
+	case Set:
+		st.SetKey(cmd.Args["KEY"], cmd.Args["VALUE"])
+	case Get:
+		return st.GetKey(cmd.Args["KEY"]).Value
+	case Debug:
+		return st.Debug()
+	default:
+		return FluxisError{Code: "UNSUPPORTED_COMMAND", Message: "Specified command is not supported"}.Error()
+	}
+
+	return "OK"
 }
