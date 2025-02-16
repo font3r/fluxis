@@ -8,12 +8,13 @@ import (
 type CommandName string
 
 const (
-	Set   CommandName = "SET"
-	Get   CommandName = "GET"
-	Debug CommandName = "DEBUG"
+	Set    CommandName = "SET"
+	Get    CommandName = "GET"
+	Delete CommandName = "DELETE"
+	Debug  CommandName = "DEBUG"
 )
 
-var validCommands = []CommandName{Set, Get, Debug}
+var validCommands = []CommandName{Set, Get, Delete, Debug}
 
 type CommandWithArgs struct {
 	Command CommandName
@@ -23,6 +24,7 @@ type CommandWithArgs struct {
 /*
 	SET key=value
 	GET key
+	DELETE key
 	LIST
 */
 

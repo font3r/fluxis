@@ -97,11 +97,14 @@ func handleCommand(st *Storage, message string) string {
 	}
 
 	fmt.Printf("INFO: parsed command %s\n", cmd)
+
 	switch cmd.Command {
 	case Set:
 		st.SetKey(cmd.Args["KEY"], cmd.Args["VALUE"])
 	case Get:
 		return st.GetKey(cmd.Args["KEY"]).Value
+	case Delete:
+		st.DeleteKey(cmd.Args["KEY"])
 	case Debug:
 		return st.Debug()
 	default:

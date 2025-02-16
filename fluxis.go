@@ -31,6 +31,10 @@ func (s *Storage) SetKey(key string, value string) {
 	s.keys[key] = &Key{Key: key, Value: value, TTL: 0}
 }
 
+func (s *Storage) DeleteKey(key string) {
+	delete(s.keys, key)
+}
+
 func (s *Storage) Debug() string {
 	data := strings.Builder{}
 	for _, v := range s.keys {
