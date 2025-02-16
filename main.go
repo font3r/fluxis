@@ -45,17 +45,15 @@ func processRequest(conn net.Conn, cmdHandler func(s string) string) {
 	defer func() {
 		if r := recover(); r != nil {
 			fmt.Println("WARNING: recovered in processRequest() because of:", r)
+
+			internalErr := FluxisError{Code: "INTERNAL_ERROR", Message: "Internal error"}
+			_, err := conn.Write([]byte(internalErr.Error()))
+			if err != nil {
+				fmt.Printf("ERROR: errror during writing data to connection - %s\n", err)
+			}
+
+			conn.Close()
 		}
-
-		fmt.Printf("DEBUG: closing connection %s\n", conn.RemoteAddr())
-
-		internalErr := FluxisError{Code: "INTERNAL_ERROR", Message: "Internal error"}
-		_, err := conn.Write([]byte(internalErr.Error()))
-		if err != nil {
-			fmt.Printf("ERROR: errror during writing data to connection - %s\n", err)
-		}
-
-		conn.Close()
 	}()
 
 	reqBuilder := strings.Builder{}
@@ -85,6 +83,8 @@ func processRequest(conn net.Conn, cmdHandler func(s string) string) {
 	if err != nil {
 		fmt.Printf("ERROR: errror during writing data to connection - %s\n", err)
 	}
+
+	conn.Close()
 }
 
 func handleCommand(st *Storage, message string) string {

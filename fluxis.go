@@ -24,7 +24,7 @@ func (s *Storage) GetKey(key string) *Key {
 		return key
 	}
 
-	return nil
+	return &Key{}
 }
 
 func (s *Storage) SetKey(key string, value string) {
