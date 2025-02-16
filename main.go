@@ -14,7 +14,33 @@ const buffer_limit int = 1024
 func main() {
 	fmt.Println("INFO: starting fluxis server")
 
-	ln, err := net.Listen("tcp", fmt.Sprintf("0.0.0.0:%d", port))
+	st := NewStorage()
+
+	start(func(message string) string {
+		if strings.HasPrefix(message, "SET") {
+			cmd := strings.Split(message[3:], "=")
+			err := st.SetKey(cmd[0], cmd[1])
+			if err != nil {
+				return "ERR"
+			}
+
+			return "OK"
+		}
+
+		if strings.HasPrefix(message, "GET") {
+			return st.GetKey(message[3:])
+		}
+
+		if strings.HasPrefix(message, "DEBUG") {
+			return st.Debug()
+		}
+
+		return "INVALID COMMAND"
+	})
+}
+
+func start(process func(s string) string) {
+	ln, err := net.Listen("tcp4", fmt.Sprintf("0.0.0.0:%d", port))
 	if err != nil {
 		panic(fmt.Sprintf("ERROR: error during binding to port %d\n", port))
 	}
@@ -52,12 +78,12 @@ func main() {
 			}
 		}
 
-		fmt.Printf("INFO: received %s\n", req.String())
+		reqS := req.String()
 
-		res := strings.Builder{}
-		res.WriteString(req.String())
+		fmt.Printf("INFO: received \"%s\"\n", reqS)
+		res := process(reqS)
 
-		_, err = conn.Write([]byte("asd"))
+		_, err = conn.Write([]byte(res))
 		if err != nil {
 			fmt.Printf("ERROR: errror during writing data to connection - %s\n", err)
 		}
