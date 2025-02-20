@@ -6,38 +6,38 @@ import (
 )
 
 type Storage struct {
-	keys map[string]*Key
+	entries map[string]*CacheEntry
 }
 
-type Key struct {
+type CacheEntry struct {
 	Key   string
 	Value string
 	TTL   int
 }
 
 func NewStorage() Storage {
-	return Storage{keys: make(map[string]*Key)}
+	return Storage{entries: make(map[string]*CacheEntry)}
 }
 
-func (s *Storage) GetKey(key string) *Key {
-	if key, exists := s.keys[key]; exists {
+func (s *Storage) GetKey(key string) *CacheEntry {
+	if key, exists := s.entries[key]; exists {
 		return key
 	}
 
-	return &Key{}
+	return &CacheEntry{}
 }
 
 func (s *Storage) SetKey(key string, value string) {
-	s.keys[key] = &Key{Key: key, Value: value, TTL: 0}
+	s.entries[key] = &CacheEntry{Key: key, Value: value, TTL: 0}
 }
 
 func (s *Storage) DeleteKey(key string) {
-	delete(s.keys, key)
+	delete(s.entries, key)
 }
 
 func (s *Storage) Debug() string {
 	data := strings.Builder{}
-	for _, v := range s.keys {
+	for _, v := range s.entries {
 		data.WriteString(fmt.Sprintf("%s = %s (%d)\n", v.Key, v.Value, v.TTL))
 	}
 

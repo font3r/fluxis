@@ -100,11 +100,11 @@ func handleCommand(st *Storage, message string) string {
 
 	switch cmd.Command {
 	case Set:
-		st.SetKey(cmd.Args["KEY"], cmd.Args["VALUE"])
+		st.SetKey(cmd.Args[key], cmd.Args[value])
 	case Get:
-		return st.GetKey(cmd.Args["KEY"]).Value
+		return st.GetKey(cmd.Args[key]).Value
 	case Delete:
-		st.DeleteKey(cmd.Args["KEY"])
+		st.DeleteKey(cmd.Args[key])
 	case Debug:
 		return st.Debug()
 	default:

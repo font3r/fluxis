@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"strings"
 )
 
@@ -12,6 +11,14 @@ const (
 	Get    CommandName = "GET"
 	Delete CommandName = "DELETE"
 	Debug  CommandName = "DEBUG"
+
+	key   string = "key"
+	value string = "value"
+)
+
+var (
+	ErrInvalidRequest FluxisError = FluxisError{Code: "INVALID_REQUEST", Message: "Invalid request"}
+	ErrInvalidCommand FluxisError = FluxisError{Code: "INVALID_COMMAND", Message: "Invalid command"}
 )
 
 var validCommands = []CommandName{Set, Get, Delete, Debug}
@@ -21,44 +28,87 @@ type CommandWithArgs struct {
 	Args    map[string]string
 }
 
-/*
-	SET key=value
-	GET key
-	DELETE key
-	LIST
-*/
-
 func Parse(raw string) (CommandWithArgs, error) {
-	for _, v := range validCommands {
-		if !strings.HasPrefix(raw, string(v)) {
-			continue
-		}
-
-		args := strings.Split(
-			strings.TrimLeft(
-				raw,
-				fmt.Sprintf("%s ", string(v))),
-			"=")
-
-		argsMap := make(map[string]string)
-		argsC := len(args)
-		if argsC == 0 {
-			argsMap["KEY"] = ""
-		}
-
-		if argsC >= 1 {
-			argsMap["KEY"] = args[0]
-		}
-
-		if argsC >= 2 {
-			argsMap["VALUE"] = args[1]
-		}
-
-		return CommandWithArgs{
-			Command: v,
-			Args:    argsMap,
-		}, nil
+	parts := strings.Split(strings.Trim(raw, " "), " ")
+	if len(parts) == 1 && parts[0] == "" {
+		return CommandWithArgs{}, ErrInvalidRequest
 	}
 
-	return CommandWithArgs{}, FluxisError{Code: "INVALID_COMMAND", Message: "Invalid command"}
+	var cmd CommandName
+	for _, v := range validCommands {
+		if parts[0] == string(v) {
+			cmd = v
+			break
+		}
+	}
+
+	switch cmd {
+	default:
+		fallthrough
+	case "":
+		return CommandWithArgs{}, ErrInvalidCommand
+	case Get:
+		return validateGet(parts)
+	case Set:
+		return validateSet(parts)
+	case Delete:
+		return validateDelete(parts)
+	case Debug:
+		return validateDebug(parts)
+	}
+}
+
+func validateGet(parts []string) (CommandWithArgs, error) {
+	if len(parts) != 2 {
+		return CommandWithArgs{}, ErrInvalidCommand
+	}
+
+	return CommandWithArgs{
+		Command: Get,
+		Args: map[string]string{
+			key: parts[1],
+		},
+	}, nil
+}
+
+func validateSet(parts []string) (CommandWithArgs, error) {
+	if len(parts) != 2 {
+		return CommandWithArgs{}, ErrInvalidCommand
+	}
+
+	kv := strings.Split(parts[1], "=")
+	if len(kv) != 2 {
+		return CommandWithArgs{}, ErrInvalidCommand
+	}
+
+	return CommandWithArgs{
+		Command: Set,
+		Args: map[string]string{
+			key:   kv[0],
+			value: kv[1],
+		},
+	}, nil
+}
+
+func validateDelete(parts []string) (CommandWithArgs, error) {
+	if len(parts) != 2 {
+		return CommandWithArgs{}, ErrInvalidCommand
+	}
+
+	return CommandWithArgs{
+		Command: Delete,
+		Args: map[string]string{
+			key: parts[1],
+		},
+	}, nil
+}
+
+func validateDebug(parts []string) (CommandWithArgs, error) {
+	if len(parts) != 1 {
+		return CommandWithArgs{}, ErrInvalidCommand
+	}
+
+	return CommandWithArgs{
+		Command: Debug,
+	}, nil
 }
