@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"strings"
+	"time"
 )
 
 type Storage struct {
@@ -12,23 +13,29 @@ type Storage struct {
 type CacheEntry struct {
 	Key   string
 	Value string
-	TTL   int
+	TTL   int64
 }
 
 func NewStorage() Storage {
 	return Storage{entries: make(map[string]*CacheEntry)}
 }
 
-func (s *Storage) GetKey(key string) *CacheEntry {
-	if key, exists := s.entries[key]; exists {
-		return key
+func (s *Storage) GetKey(key string, now func() time.Time) *CacheEntry {
+	if entry, exists := s.entries[key]; exists {
+		if !now().After(time.Unix(entry.TTL, 0)) {
+			return entry
+		}
 	}
 
 	return &CacheEntry{}
 }
 
-func (s *Storage) SetKey(key string, value string) {
-	s.entries[key] = &CacheEntry{Key: key, Value: value, TTL: 0}
+func (s *Storage) SetKey(key string, value string, ttl int, now func() time.Time) {
+	s.entries[key] = &CacheEntry{
+		Key:   key,
+		Value: value,
+		TTL:   now().Add(time.Second * time.Duration(ttl)).Unix(),
+	}
 }
 
 func (s *Storage) DeleteKey(key string) {
@@ -38,7 +45,7 @@ func (s *Storage) DeleteKey(key string) {
 func (s *Storage) Debug() string {
 	data := strings.Builder{}
 	for _, v := range s.entries {
-		data.WriteString(fmt.Sprintf("%s = %s (%d)\n", v.Key, v.Value, v.TTL))
+		data.WriteString(fmt.Sprintf("%s = %s (%v)\n", v.Key, v.Value, v.TTL))
 	}
 
 	return data.String()

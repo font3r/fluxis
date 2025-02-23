@@ -11,6 +11,7 @@ const (
 	Get    CommandName = "GET"
 	Delete CommandName = "DELETE"
 	Debug  CommandName = "DEBUG"
+	Time   CommandName = "TIME"
 
 	key   string = "key"
 	value string = "value"
@@ -21,7 +22,7 @@ var (
 	ErrInvalidCommand FluxisError = FluxisError{Code: "INVALID_COMMAND", Message: "Invalid command"}
 )
 
-var validCommands = []CommandName{Set, Get, Delete, Debug}
+var validCommands = []CommandName{Set, Get, Delete, Time, Debug}
 
 type CommandWithArgs struct {
 	Command CommandName
@@ -53,6 +54,8 @@ func Parse(raw string) (CommandWithArgs, error) {
 		return validateSet(parts)
 	case Delete:
 		return validateDelete(parts)
+	case Time:
+		return validateTime(parts)
 	case Debug:
 		return validateDebug(parts)
 	}
@@ -100,6 +103,16 @@ func validateDelete(parts []string) (CommandWithArgs, error) {
 		Args: map[string]string{
 			key: parts[1],
 		},
+	}, nil
+}
+
+func validateTime(parts []string) (CommandWithArgs, error) {
+	if len(parts) != 1 {
+		return CommandWithArgs{}, ErrInvalidCommand
+	}
+
+	return CommandWithArgs{
+		Command: Time,
 	}, nil
 }
 

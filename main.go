@@ -6,6 +6,7 @@ import (
 	"io"
 	"net"
 	"strings"
+	"time"
 )
 
 const port = 5845
@@ -14,6 +15,8 @@ const buffer_limit int = 1024
 func main() {
 	fmt.Println("INFO: starting fluxis server")
 	st := NewStorage()
+
+	go StartVacuum(&st, time.Now)
 
 	start(func(s string) string {
 		return handleCommand(&st, s)
@@ -100,11 +103,13 @@ func handleCommand(st *Storage, message string) string {
 
 	switch cmd.Command {
 	case Set:
-		st.SetKey(cmd.Args[key], cmd.Args[value])
+		st.SetKey(cmd.Args[key], cmd.Args[value], 10, time.Now)
 	case Get:
-		return st.GetKey(cmd.Args[key]).Value
+		return st.GetKey(cmd.Args[key], time.Now).Value
 	case Delete:
 		st.DeleteKey(cmd.Args[key])
+	case Time:
+		return fmt.Sprintf("%d", time.Now().Unix())
 	case Debug:
 		return st.Debug()
 	default:
